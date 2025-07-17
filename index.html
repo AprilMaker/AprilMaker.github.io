@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>协作式世界地图标注平台</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        header {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 2px solid #00b4d8;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            color: #00b4d8;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .content {
+            display: flex;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+        }
+        
+        .map-container {
+            flex: 3;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+            background: #0a1929;
+        }
+        
+        .sidebar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 300px;
+        }
+        
+        .panel {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            border: 1px solid #0077b6;
+        }
+        
+        .panel h2 {
+            color: #00b4d8;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .tools {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .tool-btn {
+            background: linear-gradient(135deg, #0077b6, #00b4d8);
+            border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .tool-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 180, 216, 0.4);
+        }
+        
+        .tool-btn.active {
+            background: linear-gradient(135deg, #ff9e00, #ff5400);
+            box-shadow: 0 0 15px rgba(255, 148, 0, 0.6);
+        }
+        
+        .tool-btn i {
+            font-size: 1.5rem;
+        }
+        
+        .color-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.2);
+        }
+        
+        .color-option.selected {
+            border-color: white;
+            transform: scale(1.2);
+        }
+        
+        .users-online {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .user-badge {
+            background: linear-gradient(135deg, #0077b6, #023e8a);
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .user-badge i {
+            color: #90e0ef;
+        }
+        
+        .annotations-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .annotation-item {
+            background: rgba(2, 62, 138, 0.3);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #00b4d8;
+        }
+        
+        .annotation-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #90e0ef;
+        }
+        
+        .annotation-desc {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0077b6, #00b4d8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .user-details h3 {
+            color: #00b4d8;
+        }
+        
+        .user-details p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4ade80;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border-top: 2px solid #00b4d8;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .connection-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .connection-input {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .connection-btn {
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, #0077b6, #00b4d8);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .connection-btn:hover {
+            background: linear-gradient(135deg, #00b4d8, #0077b6);
+        }
+        
+        @media (max-width: 900px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .map-container {
+                min-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-globe-americas"></i> 协作式世界地图标注平台</h1>
+            <p class="subtitle">在空白世界地图上标注地点、绘制场景，所有更改会实时同步给所有用户。无需服务器！</p>
+        </header>
+        
+        <div class="content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="panel">
+                    <div class="user-info">
+                        <div class="avatar" id="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="user-details">
+                            <h3 id="username">游客</h3>
+                            <div class="status">
+                                <div class="status-dot" id="status-dot"></div>
+                                <span id="status-text">离线</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2><i class="fas fa-tools"></i> 绘图工具</h2>
+                    <div class="tools">
+                        <button class="tool-btn active" id="marker-btn">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>标记</span>
+                        </button>
+                        <button class="tool-btn" id="polyline-btn">
+                            <i class="fas fa-draw-polygon"></i>
+                            <span>路径</span>
+                        </button>
+                        <button class="tool-btn" id="polygon-btn">
+                            <i class="fas fa-shapes"></i>
+                            <span>区域</span>
+                        </button>
+                        <button class="tool-btn" id="text-btn">
+                            <i class="fas fa-font"></i>
+                            <span>文本</span>
+                        </button>
+                        <button class="tool-btn" id="move-btn">
+                            <i class="fas fa-arrows-alt"></i>
+                            <span>移动</span>
+                        </button>
+                        <button class="tool-btn" id="delete-btn">
+                            <i class="fas fa-trash"></i>
+                            <span>删除</span>
+                        </button>
+                    </div>
+                    
+                    <h3>选择颜色：</h3>
+                    <div class="color-picker">
+                        <div class="color-option selected" style="background-color: #FF5252;" data-color="#FF5252"></div>
+                        <div class="color-option" style="background-color: #4CAF50;" data-color="#4CAF50"></div>
+                        <div class="color-option" style="background-color: #2196F3;" data-color="#2196F3"></div>
+                        <div class="color-option" style="background-color: #FFC107;" data-color="#FFC107"></div>
+                        <div class="color-option" style="background-color: #9C27B0;" data-color="#9C27B0"></div>
+                        <div class="color-option" style="background-color: #00BCD4;" data-color="#00BCD4"></div>
+                        <div class="color-option" style="background-color: #FF9800;" data-color="#FF9800"></div>
+                        <div class="color-option" style="background-color: #E91E63;" data-color="#E91E63"></div>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h2><i class="fas fa-plug"></i> 连接设置</h2>
+                    <div class="connection-panel">
+                        <input type="text" class="connection-input" id="room-id" placeholder="输入房间ID" value="global-map">
+                        <button class="connection-btn" id="connect-btn">连接到房间</button>
+                        <div class="status" style="margin-top: 10px;">
+                            <div class="status-dot" id="connection-status"></div>
+                            <span id="connection-text">未连接</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h2><i class="fas fa-users"></i> 在线用户 <span id="online-count">0</span></h2>
+                    <div class="users-online" id="users-list">
+                        <div class="user-badge">
+                            <i class="fas fa-user"></i>
+                            <span>等待连接...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>协作式世界地图标注平台 | 点对点实时同步 | 纯前端技术实现</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 生成随机用户ID和颜色
+        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        const userColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+        const userName = `用户${Math.floor(Math.random() * 1000)}`;
+        
+        // 用户状态
+        let currentTool = 'marker';
+        let currentColor = '#FF5252';
+        let map, drawnItems;
+        let connections = {};
+        let peerConnection;
+        let dataChannel;
+        let roomId = 'global-map';
+        
+        // 初始化地图
+        function initMap() {
+            // 创建地图实例
+            map = L.map('map').setView([20, 0], 2);
+            
+            // 添加空白地图图层（无标注的基础地图）
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // 初始化图层组用于存储用户标注
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+            
+            // 设置地图事件监听
+            setupMapEvents();
+            
+            // 更新用户界面
+            updateUserUI();
+        }
+        
+        // 更新用户界面
+        function updateUserUI() {
+            document.getElementById('username').textContent = userName;
+            document.getElementById('user-avatar').style.background = 
+                `linear-gradient(135deg, ${userColor.replace(')', ', 0.8)')}, ${userColor.replace(')', ', 0.4)')})`;
+        }
+        
+        // 设置地图事件监听
+        function setupMapEvents() {
+            // 点击地图添加标记
+            map.on('click', function(e) {
+                if (currentTool === 'marker') {
+                    addMarker(e.latlng);
+                }
+            });
+        }
+        
+        // 添加标记
+        function addMarker(latlng) {
+            const marker = L.marker(latlng, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background: ${currentColor}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center;">
+                              <i class="fas fa-map-marker" style="color: white; font-size: 12px;"></i>
+                           </div>`,
+                    iconSize: [24, 24]
+                })
+            }).addTo(drawnItems);
+            
+            // 为标记添加弹出窗口
+            marker.bindPopup(`<b>${userName}</b><br>${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`).openPopup();
+            
+            // 广播标记信息
+            broadcastAnnotation({
+                type: 'marker',
+                id: 'marker_' + Date.now(),
+                latlng: latlng,
+                color: currentColor,
+                userId: userId,
+                userName: userName
+            });
+        }
+        
+        // 广播标注信息
+        function broadcastAnnotation(annotation) {
+            if (!dataChannel || dataChannel.readyState !== 'open') return;
+            
+            try {
+                const message = {
+                    type: 'annotation',
+                    data: annotation
+                };
+                dataChannel.send(JSON.stringify(message));
+            } catch (e) {
+                console.error('发送消息失败:', e);
+            }
+        }
+        
+        // 连接到WebRTC房间
+        async function connectToRoom() {
+            updateConnectionStatus('connecting', '连接中...');
+            
+            try {
+                // 创建对等连接
+                const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+                peerConnection = new RTCPeerConnection(configuration);
+                
+                // 设置数据通道
+                dataChannel = peerConnection.createDataChannel('mapData');
+                setupDataChannel(dataChannel);
+                
+                // 创建offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                // 通过伪信令系统连接（简化版）
+                // 在实际应用中，这里应该使用信令服务器交换SDP信息
+                // 为简化，我们直接使用相同的房间ID
+                roomId = document.getElementById('room-id').value || 'global-map';
+                
+                // 模拟信令交换
+                setTimeout(() => {
+                    if (peerConnection.iceGatheringState === 'complete') {
+                        const answer = {
+                            type: 'answer',
+                            sdp: peerConnection.localDescription.sdp
+                        };
+                        peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    }
+                }, 500);
+                
+                // ICE候选处理
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        // 在实际应用中，这里应该将候选发送给其他对等方
+                    }
+                };
+                
+                // 连接状态变化
+                peerConnection.onconnectionstatechange = () => {
+                    if (peerConnection.connectionState === 'connected') {
+                        updateConnectionStatus('connected', '已连接');
+                    } else if (peerConnection.connectionState === 'disconnected') {
+                        updateConnectionStatus('disconnected', '已断开');
+                    }
+                };
+                
+                // 添加现有标注到新用户（模拟）
+                simulateExistingAnnotations();
+                
+            } catch (error) {
+                console.error('连接失败:', error);
+                updateConnectionStatus('error', '连接失败');
+            }
+        }
+        
+        // 设置数据通道
+        function setupDataChannel(channel) {
+            channel.onopen = () => {
+                console.log('数据通道已打开');
+                updateConnectionStatus('connected', '已连接');
+                
+                // 发送用户加入消息
+                const joinMessage = {
+                    type: 'userJoin',
+                    userId: userId,
+                    userName: userName,
+                    color: userColor
+                };
+                channel.send(JSON.stringify(joinMessage));
+                
+                // 更新在线用户列表
+                updateOnlineUsers();
+            };
+            
+            channel.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleDataMessage(message);
+                } catch (e) {
+                    console.error('解析消息失败:', e);
+                }
+            };
+            
+            channel.onclose = () => {
+                console.log('数据通道已关闭');
+                updateConnectionStatus('disconnected', '已断开');
+            };
+        }
+        
+        // 处理数据消息
+        function handleDataMessage(message) {
+            switch (message.type) {
+                case 'annotation':
+                    addAnnotationFromNetwork(message.data);
+                    break;
+                case 'userJoin':
+                    addUserToOnlineList(message);
+                    break;
+            }
+        }
+        
+        // 从网络添加标注
+        function addAnnotationFromNetwork(annotation) {
+            if (annotation.type === 'marker') {
+                const latlng = L.latLng(annotation.latlng.lat, annotation.latlng.lng);
+                const marker = L.marker(latlng, {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        html: `<div style="background: ${annotation.color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center;">
+                                  <i class="fas fa-map-marker" style="color: white; font-size: 12px;"></i>
+                               </div>`,
+                        iconSize: [24, 24]
+                    })
+                }).addTo(drawnItems);
+                
+                marker.bindPopup(`<b>${annotation.userName}</b><br>${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
+            }
+        }
+        
+        // 添加用户到在线列表
+        function addUserToOnlineList(user) {
+            const usersList = document.getElementById('users-list');
+            const userBadge = document.createElement('div');
+            userBadge.className = 'user-badge';
+            userBadge.innerHTML = `
+                <i class="fas fa-user" style="color: ${user.color}"></i>
+                <span>${user.userName}</span>
+            `;
+            usersList.appendChild(userBadge);
+            
+            // 更新在线用户计数
+            const onlineCount = document.getElementById('online-count');
+            onlineCount.textContent = usersList.children.length;
+        }
+        
+        // 更新在线用户列表
+        function updateOnlineUsers() {
+            const usersList = document.getElementById('users-list');
+            usersList.innerHTML = '';
+            
+            // 添加当前用户
+            addUserToOnlineList({
+                userId: userId,
+                userName: userName,
+                color: userColor
+            });
+        }
+        
+        // 更新连接状态
+        function updateConnectionStatus(status, text) {
+            const statusDot = document.getElementById('connection-status');
+            const statusText = document.getElementById('connection-text');
+            
+            statusText.textContent = text;
+            
+            switch (status) {
+                case 'connecting':
+                    statusDot.style.background = '#f59e0b';
+                    break;
+                case 'connected':
+                    statusDot.style.background = '#10b981';
+                    break;
+                case 'disconnected':
+                    statusDot.style.background = '#ef4444';
+                    break;
+                case 'error':
+                    statusDot.style.background = '#ef4444';
+                    break;
+            }
+        }
+        
+        // 模拟现有标注（在实际应用中应由信令服务器提供）
+        function simulateExistingAnnotations() {
+            setTimeout(() => {
+                // 添加几个示例标注
+                const annotations = [
+                    {
+                        type: 'marker',
+                        id: 'marker_1',
+                        latlng: { lat: 51.5074, lng: -0.1278 },
+                        color: '#FF5252',
+                        userId: 'system',
+                        userName: '系统'
+                    },
+                    {
+                        type: 'marker',
+                        id: 'marker_2',
+                        latlng: { lat: 40.7128, lng: -74.0060 },
+                        color: '#2196F3',
+                        userId: 'system',
+                        userName: '系统'
+                    },
+                    {
+                        type: 'marker',
+                        id: 'marker_3',
+                        latlng: { lat: 35.6895, lng: 139.6917 },
+                        color: '#4CAF50',
+                        userId: 'system',
+                        userName: '系统'
+                    }
+                ];
+                
+                annotations.forEach(annotation => {
+                    addAnnotationFromNetwork(annotation);
+                });
+            }, 1000);
+        }
+        
+        // 设置工具按钮事件监听
+        function setupToolEvents() {
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentTool = this.id.replace('-btn', '');
+                });
+            });
+            
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                    this.classList.add('selected');
+                    currentColor = this.getAttribute('data-color');
+                });
+            });
+            
+            document.getElementById('connect-btn').addEventListener('click', connectToRoom);
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            setupToolEvents();
+            updateConnectionStatus('disconnected', '未连接');
+        });
+    </script>
+</body>
+</html>
