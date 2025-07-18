@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>几何地牢：Roguelike冒险</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            margin: 20px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            background: rgba(10, 10, 20, 0.7);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #gameHeader {
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ff6b6b;
+        }
+        
+        .gameTitle {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.7);
+            letter-spacing: 1px;
+        }
+        
+        #gameStats {
+            display: flex;
+            gap: 20px;
+            font-size: 1.1rem;
+        }
+        
+        .statItem {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .statValue {
+            font-weight: 700;
+            color: #4ecdc4;
+        }
+        
+        #gameArea {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #gameUI {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+        
+        #controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .control-btn:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        #actionBtns {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        
+        .action-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255, 107, 107, 0.25);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 107, 107, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .action-btn:active {
+            transform: scale(0.9);
+            background: rgba(255, 107, 107, 0.4);
+        }
+        
+        #skillBtn {
+            background: rgba(78, 205, 196, 0.25);
+            border: 2px solid rgba(78, 205, 196, 0.5);
+        }
+        
+        #gameStartScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 25, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            gap: 30px;
+        }
+        
+        #gameTitle {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #ff6b6b;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+            letter-spacing: 3px;
+            margin-bottom: 20px;
+        }
+        
+        #startBtn {
+            padding: 15px 50px;
+            font-size: 1.5rem;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        #startBtn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.6);
+        }
+        
+        .gameInstructions {
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.6;
+            color: #a0a0c0;
+            margin-top: 20px;
+        }
+        
+        .keyHint {
+            display: inline-block;
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            margin: 0 5px;
+        }
+        
+        #mobileControls {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            #desktopControls {
+                display: none;
+            }
+            
+            #mobileControls {
+                display: block;
+            }
+            
+            .gameTitle {
+                font-size: 1.4rem;
+            }
+            
+            #gameStats {
+                font-size: 0.9rem;
+                gap: 10px;
+            }
+            
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+            
+            .action-btn {
+                width: 60px;
+                height: 60px;
+            }
+        }
+        
+        .damageText {
+            position: absolute;
+            color: #ff6b6b;
+            font-weight: bold;
+            pointer-events: none;
+            user-select: none;
+            z-index: 5;
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 4;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameHeader">
+            <div class="gameTitle">几何地牢：Roguelike冒险</div>
+            <div id="gameStats">
+                <div class="statItem">生命: <span id="healthValue" class="statValue">100</span></div>
+                <div class="statItem">金币: <span id="coinsValue" class="statValue">0</span></div>
+                <div class="statItem">层数: <span id="levelValue" class="statValue">1</span></div>
+                <div class="statItem">杀敌: <span id="killsValue" class="statValue">0</span></div>
+            </div>
+        </div>
+        
+        <div id="gameArea">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="gameUI">
+                <div id="controls">
+                    <div class="control-row">
+                        <div class="control-btn" id="upBtn">↑</div>
+                    </div>
+                    <div class="control-row">
+                        <div class="control-btn" id="leftBtn">←</div>
+                        <div class="control-btn" id="downBtn">↓</div>
+                        <div class="control-btn" id="rightBtn">→</div>
+                    </div>
+                </div>
+                
+                <div id="actionBtns">
+                    <div class="action-btn" id="attackBtn">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="action-btn" id="skillBtn">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="gameStartScreen">
+            <h1 id="gameTitle">几何地牢</h1>
+            <p class="gameInstructions">
+                在这个随机生成的2.5D地牢中生存下去！击败敌人，收集金币，深入地下城最深处！
+            </p>
+            <p class="gameInstructions">
+                <span class="keyHint">WASD</span> 移动角色 |
+                <span class="keyHint">鼠标</span> 瞄准射击 |
+                <span class="keyHint">空格</span> 使用技能
+            </p>
+            <p class="gameInstructions">
+                触摸屏设备可以使用屏幕下方的控制按钮
+            </p>
+            <button id="startBtn">开始冒险</button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏主类
+        class GeometryDungeon {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.gameWidth = this.canvas.width;
+                this.gameHeight = this.canvas.height;
+                this.resizeCanvas();
+                
+                // 游戏状态
+                this.gameState = 'start'; // start, playing, gameover
+                this.level = 1;
+                this.coins = 0;
+                this.kills = 0;
+                
+                // 玩家
+                this.player = {
+                    x: this.gameWidth / 2,
+                    y: this.gameHeight / 2,
+                    size: 20,
+                    speed: 5,
+                    health: 100,
+                    maxHealth: 100,
+                    color: '#4ecdc4',
+                    shooting: false,
+                    shootCooldown: 0,
+                    shootDelay: 15
+                };
+                
+                // 敌人数组
+                this.enemies = [];
+                // 子弹数组
+                this.bullets = [];
+                // 粒子效果数组
+                this.particles = [];
+                // 伤害数字数组
+                this.damageTexts = [];
+                // 金币数组
+                this.coinsList = [];
+                
+                // 控制状态
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, down: false };
+                
+                // 游戏循环
+                this.lastTime = 0;
+                this.deltaTime = 0;
+                
+                // 绑定事件
+                this.setupEventListeners();
+                // 初始化游戏
+                this.init();
+            }
+            
+            resizeCanvas() {
+                const container = document.getElementById('gameArea');
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.gameWidth = this.canvas.width;
+                this.gameHeight = this.canvas.height;
+            }
+            
+            setupEventListeners() {
+                // 键盘事件
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.key] = true;
+                    
+                    // 空格键触发技能
+                    if (e.key === ' ' && this.gameState === 'playing') {
+                        this.useSkill();
+                    }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key] = false;
+                });
+                
+                // 鼠标事件
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouse.x = e.clientX - rect.left;
+                    this.mouse.y = e.clientY - rect.top;
+                });
+                
+                this.canvas.addEventListener('mousedown', () => {
+                    this.mouse.down = true;
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.mouse.down = false;
+                });
+                
+                // 触摸事件
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouse.x = e.touches[0].clientX - rect.left;
+                    this.mouse.y = e.touches[0].clientY - rect.top;
+                }, { passive: false });
+                
+                this.canvas.addEventListener('touchstart', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouse.x = e.touches[0].clientX - rect.left;
+                    this.mouse.y = e.touches[0].clientY - rect.top;
+                    this.mouse.down = true;
+                });
+                
+                this.canvas.addEventListener('touchend', () => {
+                    this.mouse.down = false;
+                });
+                
+                // 窗口大小调整
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+                
+                // 开始按钮
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.startGame();
+                });
+                
+                // 移动控制按钮
+                document.getElementById('upBtn').addEventListener('touchstart', () => this.keys['w'] = true);
+                document.getElementById('upBtn').addEventListener('touchend', () => this.keys['w'] = false);
+                document.getElementById('leftBtn').addEventListener('touchstart', () => this.keys['a'] = true);
+                document.getElementById('leftBtn').addEventListener('touchend', () => this.keys['a'] = false);
+                document.getElementById('downBtn').addEventListener('touchstart', () => this.keys['s'] = true);
+                document.getElementById('downBtn').addEventListener('touchend', () => this.keys['s'] = false);
+                document.getElementById('rightBtn').addEventListener('touchstart', () => this.keys['d'] = true);
+                document.getElementById('rightBtn').addEventListener('touchend', () => this.keys['d'] = false);
+                
+                // 攻击按钮
+                document.getElementById('attackBtn').addEventListener('touchstart', () => {
+                    this.mouse.down = true;
+                });
+                document.getElementById('attackBtn').addEventListener('touchend', () => {
+                    this.mouse.down = false;
+                });
+                
+                // 技能按钮
+                document.getElementById('skillBtn').addEventListener('touchstart', () => {
+                    this.useSkill();
+                });
+            }
+            
+            startGame() {
+                this.gameState = 'playing';
+                document.getElementById('gameStartScreen').style.display = 'none';
+                this.level = 1;
+                this.coins = 0;
+                this.kills = 0;
+                this.player.health = 100;
+                this.enemies = [];
+                this.bullets = [];
+                this.particles = [];
+                this.damageTexts = [];
+                this.coinsList = [];
+                
+                this.updateStats();
+                this.generateLevel();
+                this.gameLoop(0);
+            }
+            
+            generateLevel() {
+                // 创建一些敌人
+                for (let i = 0; i < 5 + this.level * 2; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 300 + Math.random() * 200;
+                    const x = this.player.x + Math.cos(angle) * distance;
+                    const y = this.player.y + Math.sin(angle) * distance;
+                    
+                    this.enemies.push({
+                        x: x,
+                        y: y,
+                        size: 15 + Math.random() * 10,
+                        speed: 1.5 + Math.random() * 1.5,
+                        health: 20 + this.level * 5,
+                        maxHealth: 20 + this.level * 5,
+                        color: `hsl(${Math.random() * 60}, 70%, 50%)`,
+                        attackCooldown: 0
+                    });
+                }
+                
+                // 创建一些金币
+                for (let i = 0; i < 10 + this.level * 3; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 200 + Math.random() * 300;
+                    const x = this.player.x + Math.cos(angle) * distance;
+                    const y = this.player.y + Math.sin(angle) * distance;
+                    
+                    this.coinsList.push({
+                        x: x,
+                        y: y,
+                        size: 8,
+                        value: 1,
+                        collected: false
+                    });
+                }
+            }
+            
+            updateStats() {
+                document.getElementById('healthValue').textContent = this.player.health;
+                document.getElementById('coinsValue').textContent = this.coins;
+                document.getElementById('levelValue').textContent = this.level;
+                document.getElementById('killsValue').textContent = this.kills;
+            }
+            
+            updatePlayer() {
+                // 移动玩家
+                let dx = 0;
+                let dy = 0;
+                
+                if (this.keys['w'] || this.keys['ArrowUp']) dy -= 1;
+                if (this.keys['s'] || this.keys['ArrowDown']) dy += 1;
+                if (this.keys['a'] || this.keys['ArrowLeft']) dx -= 1;
+                if (this.keys['d'] || this.keys['ArrowRight']) dx += 1;
+                
+                // 归一化对角线移动
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.707;
+                    dy *= 0.707;
+                }
+                
+                this.player.x += dx * this.player.speed;
+                this.player.y += dy * this.player.speed;
+                
+                // 边界检查
+                this.player.x = Math.max(this.player.size, Math.min(this.gameWidth - this.player.size, this.player.x));
+                this.player.y = Math.max(this.player.size, Math.min(this.gameHeight - this.player.size, this.player.y));
+                
+                // 射击
+                if (this.player.shootCooldown > 0) {
+                    this.player.shootCooldown--;
+                }
+                
+                if (this.mouse.down && this.player.shootCooldown === 0) {
+                    this.shoot();
+                    this.player.shootCooldown = this.player.shootDelay;
+                }
+            }
+            
+            shoot() {
+                // 计算射击方向
+                const angle = Math.atan2(this.mouse.y - this.player.y, this.mouse.x - this.player.x);
+                
+                // 创建子弹
+                this.bullets.push({
+                    x: this.player.x,
+                    y: this.player.y,
+                    dx: Math.cos(angle) * 10,
+                    dy: Math.sin(angle) * 10,
+                    size: 6,
+                    damage: 15,
+                    color: '#ff6b6b',
+                    life: 60
+                });
+                
+                // 创建枪口闪光粒子
+                for (let i = 0; i < 5; i++) {
+                    const particleAngle = angle + (Math.random() - 0.5) * 0.5;
+                    this.particles.push({
+                        x: this.player.x,
+                        y: this.player.y,
+                        dx: Math.cos(particleAngle) * (Math.random() * 5 + 2),
+                        dy: Math.sin(particleAngle) * (Math.random() * 5 + 2),
+                        size: Math.random() * 4 + 2,
+                        color: '#ff8e8e',
+                        life: 20
+                    });
+                }
+            }
+            
+            useSkill() {
+                // 创建爆炸技能效果
+                for (let i = 0; i < 12; i++) {
+                    const angle = Math.PI * 2 * (i / 12);
+                    this.bullets.push({
+                        x: this.player.x,
+                        y: this.player.y,
+                        dx: Math.cos(angle) * 8,
+                        dy: Math.sin(angle) * 8,
+                        size: 8,
+                        damage: 25,
+                        color: '#4ecdc4',
+                        life: 30
+                    });
+                }
+                
+                // 技能粒子效果
+                for (let i = 0; i < 50; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 5 + 2;
+                    this.particles.push({
+                        x: this.player.x,
+                        y: this.player.y,
+                        dx: Math.cos(angle) * speed,
+                        dy: Math.sin(angle) * speed,
+                        size: Math.random() * 5 + 2,
+                        color: '#4ecdc4',
+                        life: Math.random() * 30 + 20
+                    });
+                }
+            }
+            
+            updateEnemies() {
+                for (let i = this.enemies.length - 1; i >= 0; i--) {
+                    const enemy = this.enemies[i];
+                    
+                    // 攻击冷却
+                    if (enemy.attackCooldown > 0) {
+                        enemy.attackCooldown--;
+                    }
+                    
+                    // 追踪玩家
+                    const dx = this.player.x - enemy.x;
+                    const dy = this.player.y - enemy.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist > 10) {
+                        enemy.x += (dx / dist) * enemy.speed;
+                        enemy.y += (dy / dist) * enemy.speed;
+                    }
+                    
+                    // 碰撞检测
+                    if (dist < enemy.size + this.player.size) {
+                        if (enemy.attackCooldown === 0) {
+                            this.player.health -= 10;
+                            this.updateStats();
+                            enemy.attackCooldown = 60;
+                            
+                            // 玩家被击中效果
+                            for (let j = 0; j < 10; j++) {
+                                this.particles.push({
+                                    x: this.player.x,
+                                    y: this.player.y,
+                                    dx: (Math.random() - 0.5) * 4,
+                                    dy: (Math.random() - 0.5) * 4,
+                                    size: Math.random() * 3 + 1,
+                                    color: '#ff6b6b',
+                                    life: Math.random() * 20 + 10
+                                });
+                            }
+                        }
+                    }
+                    
+                    // 敌人死亡
+                    if (enemy.health <= 0) {
+                        this.enemies.splice(i, 1);
+                        this.kills++;
+                        this.updateStats();
+                        
+                        // 死亡粒子效果
+                        for (let j = 0; j < 20; j++) {
+                            this.particles.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                dx: (Math.random() - 0.5) * 5,
+                                dy: (Math.random() - 0.5) * 5,
+                                size: Math.random() * 4 + 2,
+                                color: enemy.color,
+                                life: Math.random() * 30 + 20
+                            });
+                        }
+                        
+                        // 掉落金币
+                        this.coinsList.push({
+                            x: enemy.x,
+                            y: enemy.y,
+                            size: 8,
+                            value: 2,
+                            collected: false
+                        });
+                    }
+                }
+            }
+            
+            updateBullets() {
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    const bullet = this.bullets[i];
+                    
+                    // 移动子弹
+                    bullet.x += bullet.dx;
+                    bullet.y += bullet.dy;
+                    bullet.life--;
+                    
+                    // 边界检查
+                    if (bullet.x < 0 || bullet.x > this.gameWidth || 
+                        bullet.y < 0 || bullet.y > this.gameHeight || 
+                        bullet.life <= 0) {
+                        this.bullets.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // 碰撞检测（敌人）
+                    for (let j = this.enemies.length - 1; j >= 0; j--) {
+                        const enemy = this.enemies[j];
+                        const dx = bullet.x - enemy.x;
+                        const dy = bullet.y - enemy.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < bullet.size + enemy.size) {
+                            // 击中敌人
+                            enemy.health -= bullet.damage;
+                            
+                            // 显示伤害数字
+                            this.showDamage(bullet.x, bullet.y, bullet.damage);
+                            
+                            // 击中粒子效果
+                            for (let k = 0; k < 10; k++) {
+                                this.particles.push({
+                                    x: bullet.x,
+                                    y: bullet.y,
+                                    dx: (Math.random() - 0.5) * 4,
+                                    dy: (Math.random() - 0.5) * 4,
+                                    size: Math.random() * 3 + 1,
+                                    color: enemy.color,
+                                    life: Math.random() * 20 + 10
+                                });
+                            }
+                            
+                            // 移除子弹
+                            this.bullets.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            updateParticles() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    
+                    p.x += p.dx;
+                    p.y += p.dy;
+                    p.life--;
+                    
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+            
+            updateCoins() {
+                for (let i = this.coinsList.length - 1; i >= 0; i--) {
+                    const coin = this.coinsList[i];
+                    
+                    if (coin.collected) continue;
+                    
+                    // 检测玩家收集
+                    const dx = this.player.x - coin.x;
+                    const dy = this.player.y - coin.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < this.player.size + coin.size) {
+                        coin.collected = true;
+                        this.coins += coin.value;
+                        this.updateStats();
+                        
+                        // 金币收集粒子效果
+                        for (let j = 0; j < 15; j++) {
+                            this.particles.push({
+                                x: coin.x,
+                                y: coin.y,
+                                dx: (Math.random() - 0.5) * 3,
+                                dy: (Math.random() - 0.5) * 3,
+                                size: Math.random() * 4 + 2,
+                                color: '#FFD700',
+                                life: Math.random() * 30 + 20
+                            });
+                        }
+                        
+                        this.coinsList.splice(i, 1);
+                    }
+                }
+            }
+            
+            showDamage(x, y, amount) {
+                const damageText = {
+                    x: x,
+                    y: y,
+                    value: amount,
+                    life: 60,
+                    dy: -1
+                };
+                
+                this.damageTexts.push(damageText);
+            }
+            
+            updateDamageTexts() {
+                for (let i = this.damageTexts.length - 1; i >= 0; i--) {
+                    const text = this.damageTexts[i];
+                    text.y += text.dy;
+                    text.life--;
+                    
+                    if (text.life <= 0) {
+                        this.damageTexts.splice(i, 1);
+                    }
+                }
+            }
+            
+            checkLevelComplete() {
+                if (this.enemies.length === 0 && this.coinsList.length === 0) {
+                    this.level++;
+                    this.updateStats();
+                    this.generateLevel();
+                }
+            }
+            
+            draw3DDungeon() {
+                const ctx = this.ctx;
+                const width = this.gameWidth;
+                const height = this.gameHeight;
+                
+                // 绘制地牢背景（2.5D效果）
+                ctx.fillStyle = '#1e1e2e';
+                ctx.fillRect(0, 0, width, height);
+                
+                // 绘制地板网格
+                const gridSize = 60;
+                const offsetX = (this.player.x % gridSize) - gridSize;
+                const offsetY = (this.player.y % gridSize) - gridSize;
+                
+                ctx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
+                ctx.lineWidth = 1;
+                
+                // 绘制网格线
+                for (let x = offsetX; x < width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                }
+                
+                for (let y = offsetY; y < height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.stroke();
+                }
+                
+                // 绘制墙壁（3D效果）
+                ctx.fillStyle = 'rgba(40, 40, 80, 0.7)';
+                
+                // 左侧墙壁
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(40, 40);
+                ctx.lineTo(40, height - 40);
+                ctx.lineTo(0, height);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 右侧墙壁
+                ctx.beginPath();
+                ctx.moveTo(width, 0);
+                ctx.lineTo(width - 40, 40);
+                ctx.lineTo(width - 40, height - 40);
+                ctx.lineTo(width, height);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 顶部墙壁
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(40, 40);
+                ctx.lineTo(width - 40, 40);
+                ctx.lineTo(width, 0);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 底部墙壁
+                ctx.beginPath();
+                ctx.moveTo(0, height);
+                ctx.lineTo(40, height - 40);
+                ctx.lineTo(width - 40, height - 40);
+                ctx.lineTo(width, height);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            drawPlayer() {
+                const ctx = this.ctx;
+                const player = this.player;
+                
+                // 绘制玩家（三角形）
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                
+                // 朝向鼠标
+                const angle = Math.atan2(this.mouse.y - player.y, this.mouse.x - player.x);
+                ctx.rotate(angle);
+                
+                ctx.fillStyle = player.color;
+                ctx.beginPath();
+                ctx.moveTo(player.size, 0);
+                ctx.lineTo(-player.size * 0.7, player.size * 0.7);
+                ctx.lineTo(-player.size * 0.7, -player.size * 0.7);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 玩家发光效果
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = player.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                ctx.restore();
+            }
+            
+            drawEnemies() {
+                const ctx = this.ctx;
+                
+                for (const enemy of this.enemies) {
+                    ctx.save();
+                    ctx.translate(enemy.x, enemy.y);
+                    
+                    // 绘制敌人（多边形）
+                    ctx.fillStyle = enemy.color;
+                    ctx.beginPath();
+                    
+                    // 根据敌人大小确定多边形边数
+                    const sides = Math.max(3, Math.floor(enemy.size / 5));
+                    for (let i = 0; i < sides; i++) {
+                        const angle = (i * 2 * Math.PI / sides) + Math.PI/2;
+                        const x = Math.cos(angle) * enemy.size;
+                        const y = Math.sin(angle) * enemy.size;
+                        
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // 敌人发光效果
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = enemy.color;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    
+                    // 绘制血条
+                    const healthPercent = enemy.health / enemy.maxHealth;
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(-enemy.size, -enemy.size - 8, enemy.size * 2, 4);
+                    ctx.fillStyle = healthPercent > 0.6 ? '#4ecdc4' : healthPercent > 0.3 ? '#ffd166' : '#ff6b6b';
+                    ctx.fillRect(-enemy.size, -enemy.size - 8, enemy.size * 2 * healthPercent, 4);
+                    
+                    ctx.restore();
+                }
+            }
+            
+            drawBullets() {
+                const ctx = this.ctx;
+                
+                for (const bullet of this.bullets) {
+                    ctx.fillStyle = bullet.color;
+                    ctx.beginPath();
+                    ctx.arc(bullet.x, bullet.y, bullet.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 子弹发光效果
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = bullet.color;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+            
+            drawParticles() {
+                const ctx = this.ctx;
+                
+                for (const p of this.particles) {
+                    ctx.globalAlpha = p.life / 50;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.globalAlpha = 1;
+            }
+            
+            drawCoins() {
+                const ctx = this.ctx;
+                
+                for (const coin of this.coinsList) {
+                    if (coin.collected) continue;
+                    
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(coin.x, coin.y, coin.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 金币发光效果
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#FFD700';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    
+                    // 金币符号
+                    ctx.fillStyle = '#000';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('$', coin.x, coin.y);
+                }
+            }
+            
+            drawDamageTexts() {
+                const ctx = this.ctx;
+                
+                for (const text of this.damageTexts) {
+                    const alpha = Math.min(1, text.life / 20);
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.font = 'bold 18px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(text.value, text.x, text.y);
+                }
+                
+                ctx.globalAlpha = 1;
+            }
+            
+            drawUI() {
+                const ctx = this.ctx;
+                const width = this.gameWidth;
+                
+                // 绘制玩家血条
+                const healthPercent = this.player.health / this.player.maxHealth;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(20, 20, 200, 20);
+                ctx.fillStyle = healthPercent > 0.6 ? '#4ecdc4' : healthPercent > 0.3 ? '#ffd166' : '#ff6b6b';
+                ctx.fillRect(20, 20, 200 * healthPercent, 20);
+                
+                // 血条边框
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(20, 20, 200, 20);
+                
+                // 血条文字
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(`生命值: ${Math.floor(this.player.health)}/${this.player.maxHealth}`, 25, 22);
+            }
+            
+            draw() {
+                // 清除画布
+                this.ctx.clearRect(0, 0, this.gameWidth, this.gameHeight);
+                
+                // 绘制地牢
+                this.draw3DDungeon();
+                
+                // 绘制子弹
+                this.drawBullets();
+                
+                // 绘制金币
+                this.drawCoins();
+                
+                // 绘制敌人
+                this.drawEnemies();
+                
+                // 绘制玩家
+                this.drawPlayer();
+                
+                // 绘制粒子
+                this.drawParticles();
+                
+                // 绘制伤害数字
+                this.drawDamageTexts();
+                
+                // 绘制UI
+                this.drawUI();
+            }
+            
+            update() {
+                if (this.gameState !== 'playing') return;
+                
+                this.updatePlayer();
+                this.updateEnemies();
+                this.updateBullets();
+                this.updateParticles();
+                this.updateCoins();
+                this.updateDamageTexts();
+                this.checkLevelComplete();
+                
+                // 检查游戏结束
+                if (this.player.health <= 0) {
+                    this.gameState = 'gameover';
+                    document.getElementById('gameStartScreen').style.display = 'flex';
+                    document.getElementById('gameTitle').textContent = '游戏结束';
+                    document.getElementById('startBtn').textContent = '重新开始';
+                }
+            }
+            
+            gameLoop(timestamp) {
+                this.deltaTime = timestamp - this.lastTime;
+                this.lastTime = timestamp;
+                
+                this.update();
+                this.draw();
+                
+                if (this.gameState !== 'gameover') {
+                    requestAnimationFrame(this.gameLoop.bind(this));
+                }
+            }
+            
+            init() {
+                // 初始渲染
+                this.draw();
+            }
+        }
+
+        // 初始化游戏
+        window.onload = () => {
+            const game = new GeometryDungeon();
+            
+            // 添加Font Awesome图标（用于按钮）
+            const fontAwesome = document.createElement('link');
+            fontAwesome.rel = 'stylesheet';
+            fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
+            document.head.appendChild(fontAwesome);
+        };
+    </script>
+</body>
+</html>
